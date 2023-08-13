@@ -1,3 +1,3 @@
 # clustering
 
-clusteing.sh is the processing pipeline
+clustering.sh is the processing pipeline
