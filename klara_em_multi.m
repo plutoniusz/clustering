@@ -47,7 +47,7 @@ if true
     for i=1:13
         x = spconvert(load(path_list(i)))';
         %spy(x);
-        disp(num2str(def_list(i)))
+        %disp(num2str(def_list(i)))
         [phi_list{i},~,~] = spm_def2sparse(num2str(def_list(i)), num2str(b0_list(i)));
         [a1,~] = size(phi_list{i});
 
@@ -103,7 +103,7 @@ P     = log(P./sum(P,1));
 g     = log(ones(K,1)/K);
 
 ll_list = [];
-[P,g,R,ll,ll_list] = em(x_list,P,g,1000,ll_list);
+[P,g,R,ll,ll_list] = em(x_list,P,g,100,ll_list);
 figure;
 plot(ll_list);
 savefig('log_likelihood_1');
@@ -148,10 +148,10 @@ function [P,g,R,ll,ll_list] = em(x_list,P,g,nit, ll_list)
             xr = xr + x_list{i}*R{i}';
             r = r + R{i};
         end
-        [P,g] = m_step(xr,r);
+        [P,g, alpha, beta] = m_step(xr,r);
         ll_o  = ll;
         ll_list = [ll_list, ll_o];
-        ll    = loglikelihood(x_list,P,g,R);
+        ll    = loglikelihood(x_list,P,g,R, alpha, beta);
         if abs(ll-ll_o) < abs(ll*1e-9); break; end
     end
 %     for i =1:13
@@ -160,10 +160,20 @@ function [P,g,R,ll,ll_list] = em(x_list,P,g,nit, ll_list)
 end
 
 
-function ll = loglikelihood(x_list,P,g,R)
+function ll = loglikelihood(x_list,P,g,R, alpha, beta)
     ll = 0;
     for i=1:13
-        ll = ll + sum(LSE((P'*x_list{i} + g)'*R{i},1),2);
+%         ll = ll + sum(LSE((P'*x_list{i} + g - log(R{i}+1e-64))'*R{i},1),2);
+%         disp(ll);
+%         test = sum(LSE((P'*x_list{i} + g)'*R{i},1),2);
+%         disp(size(ll));
+%         disp("new iteration")
+%         disp(sum(LSE((P'*x_list{i} + g)'*R{i},1),2))
+%         disp(sum(LSE((P'*x_list{i} + g - log(R{i}))'*R{i},1),2))
+%         disp(sum(LSE(alpha'*P,1),2))
+%         disp(sum(LSE(beta'*g,1),2))
+% log(R{i}+1e-128)
+         ll = ll + sum(LSE((P'*x_list{i} + g - log(R{i}+(1e-64)))'*R{i},1),2)-sum(LSE(-sum(LSE(alpha'*P,1),2)))-sum(LSE(beta'*g,1),2);
 
     end
 end
@@ -175,10 +185,11 @@ function R = e_step(xs,P,g)
 end
 
 
-function [P, g] = m_step(xr,r)
+function [P, g, alpha, beta] = m_step(xr,r)
     alpha0 = 1e-3; % Behaves like having a Dirichlet prior
     alpha = xr + alpha0;
     P = psi(alpha) - psi(sum(alpha,1));
+    %disp(size(sum(alpha,1)));
     %P = P./sum(P,1); %dlaczego tak a nie *p(old)
     %g = r + 1e-10; % To prevent numerical problems
     beta0 = 1e-3;
