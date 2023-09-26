@@ -106,7 +106,7 @@ ll_list = [];
 [P,g,R,ll,ll_list] = em(x_list,P,g,100,ll_list);
 figure;
 plot(ll_list);
-savefig('log_likelihood_1');
+savefig('log_likelihood_new');
 
 
 for s=1:13
@@ -149,7 +149,7 @@ function [P,g,R,ll,ll_list] = em(x_list,P,g,nit, ll_list)
             r = r + R{i};
         end
         [P,g, alpha, beta] = m_step(xr,r);
-        ll_o  = ll;
+        ll_o  = ll
         ll_list = [ll_list, ll_o];
         ll    = loglikelihood(x_list,P,g,R, alpha, beta);
         if abs(ll-ll_o) < abs(ll*1e-9); break; end
@@ -173,7 +173,7 @@ function ll = loglikelihood(x_list,P,g,R, alpha, beta)
 %         disp(sum(LSE(alpha'*P,1),2))
 %         disp(sum(LSE(beta'*g,1),2))
 % log(R{i}+1e-128)
-         ll = ll + sum(LSE((P'*x_list{i} + g - log(R{i}+(1e-64)))'*R{i},1),2)-sum(LSE(-sum(LSE(alpha'*P,1),2)))-sum(LSE(beta'*g,1),2);
+         ll = ll + sum(LSE((P'*x_list{i} + g - log(R{i}+eps))'*R{i},1),2)+sum(LSE(sum(1e-3-alpha,1)*P',1),2)+sum(LSE(sum(1e-3-beta)'*g,1),2);
 
     end
 end
@@ -193,7 +193,7 @@ function [P, g, alpha, beta] = m_step(xr,r)
     %P = P./sum(P,1); %dlaczego tak a nie *p(old)
     %g = r + 1e-10; % To prevent numerical problems
     beta0 = 1e-3;
-    beta = r + beta0;
+    beta = sum(r,1) + beta0;
     %g = g/sum(g);
     g = psi(beta)-psi(sum(beta,1));
 end
