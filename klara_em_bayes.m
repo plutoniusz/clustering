@@ -9,7 +9,7 @@
 % N - number of seed voxels
 % r - responsibilities kxn
 
-if true
+if false
 %     x = load('/data/underworld/kbas/03_data/derivatives/112111/20191115/dwi/fsl-probtrackx-1/fdt_matrix2.dot');
 %     X = full(spconvert(x))';
 %     K = 10;
@@ -119,7 +119,9 @@ function ll = loglikelihood(X,P,g,R, alpha, beta)
     % disp(size(sum(R,1)));
     % disp(size(sum(sum(1e-3-alpha,1)*P',1)));
     % disp(size(sum(sum(1e-3-beta,1)'*g,1)));
-    ll = sum(LSE(R,1),2)+sum(sum(1e-3-alpha,1)*P',"all")+sum(sum(1e-3-beta,1)'*g,"all");
+    ca = gammln(sum(alpha,1))-sum(gammaln(alpha),1);
+    cb = gammaln(sum(beta,1))- sum(gammaln(beta),1);
+    ll = sum(LSE(R,1),2)+sum(sum(1e-3-alpha,1).*P+ca,"all")+sum(sum(1e-3-beta,1).*g+cb,"all");
 
 end
 

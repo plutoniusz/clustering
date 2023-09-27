@@ -175,7 +175,9 @@ function ll = loglikelihood(x_list,P,g,R, alpha, beta)
 % log(R{i}+1e-128)
          %ll = ll + sum(LSE((P'*x_list{i} + g - log(R{i}+eps))'*R{i},1),2)+sum(LSE(sum(1e-3-alpha,1)*P',1),2)+sum(LSE(sum(1e-3-beta)'*g,1),2);
          %ll = ll + sum(sum(R{i},1),2)+sum(sum(sum(1e-3-alpha,1)*P',1),2)+sum(sum(sum(1e-3-beta)'*g,1),2);
-         ll = ll + sum(LSE(R{i},1),2)+sum(sum(1e-3-alpha,1)*P',"all")+sum(sum(1e-3-beta,1)'*g,"all");
+         ca = gammaln(sum(alpha,1))-sum(gammaln(alpha),1);
+         cb = gammaln(sum(beta,1))- sum(gammaln(beta),1);
+         ll = ll + sum(LSE(R{i},1),2)+sum(sum(1e-3-alpha,1).*P-ca,"all")+sum(sum(1e-3-beta,1).*g-cb,"all");
 
     end
 end
