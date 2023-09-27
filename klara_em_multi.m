@@ -106,13 +106,13 @@ ll_list = [];
 [P,g,R,ll,ll_list] = em(x_list,P,g,100,ll_list);
 figure;
 plot(ll_list);
-savefig('log_likelihood_new');
+savefig('log_likelihood_new_test');
 
 
 for s=1:13
     for i=1:K
         mask(ind_all) = full(R{s}(i, :));
-        save_avw(mask, [gen_list{s} '/' num2str(s) '_' num2str(i)] ,'i',scales);
+        save_avw(mask, [gen_list{s} '/' num2str(s) '_' num2str(i) '_test'] ,'i',scales);
         %niftiinfo([gen_list{s} '/clusters_template_new_' num2str(s) '_' num2str(i)]).raw = niftiinfo(b0_list{i}).raw;        
         %niftiwrite(mask, [gen_list{s} '/clusters_template_new_test' num2str(s) '_' num2str(i)])%,  niftiinfo(b0_list{i}))nif
     end
@@ -173,7 +173,9 @@ function ll = loglikelihood(x_list,P,g,R, alpha, beta)
 %         disp(sum(LSE(alpha'*P,1),2))
 %         disp(sum(LSE(beta'*g,1),2))
 % log(R{i}+1e-128)
-         ll = ll + sum(LSE((P'*x_list{i} + g - log(R{i}+eps))'*R{i},1),2)+sum(LSE(sum(1e-3-alpha,1)*P',1),2)+sum(LSE(sum(1e-3-beta)'*g,1),2);
+         %ll = ll + sum(LSE((P'*x_list{i} + g - log(R{i}+eps))'*R{i},1),2)+sum(LSE(sum(1e-3-alpha,1)*P',1),2)+sum(LSE(sum(1e-3-beta)'*g,1),2);
+         %ll = ll + sum(sum(R{i},1),2)+sum(sum(sum(1e-3-alpha,1)*P',1),2)+sum(sum(sum(1e-3-beta)'*g,1),2);
+         ll = ll + sum(LSE(R{i},1),2)+sum(sum(1e-3-alpha,1)*P',"all")+sum(sum(1e-3-beta,1)'*g,"all");
 
     end
 end
