@@ -20,11 +20,11 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
     Alpha  = exp(randn(M,K)*0.001);
     Beta   = exp(randn(K,J)*0.001);
 
-    nu0 = ((100-3-eps)*rand(1)+3+eps)
+    nu0 = ((100-3-eps)*rand(1)+3+eps);
     L0 = tril(randn(4,4));
-    W0  = L0*L0'*0.001
-    c0  = (rand(1)+eps)*0.001
-    mu0 = randn(4,1)*0.0001
+    W0  = L0*L0'*0.001;
+    c0  = (rand(1)+eps)*0.001;
+    mu0 = randn(4,1)*0.001;
 
     nu = (100-3-eps)*rand(1,K,N)+3+eps;
     for n=1:N
@@ -51,7 +51,10 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
 
         A   = 0;
         B   = 0;
+
         lse = 0;
+        pom = 0;
+
         XML = []; %cell(N,1);
         lL = []; %cell(N,1);
         list_R = [];
@@ -65,7 +68,7 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
                     lL{n}  = Elogdet(W(:,:,k,n),nu(:,:,n));
                 end
             end
-            disp(sum(lP'*X{n} + lG + lL{n}'./2 - XML{n}./2-2*log(2*pi),2))
+            %disp(sum(lP'*X{n} + lG + lL{n}'./2 - XML{n}./2-2*log(2*pi),2))
 
 
             [R,lse_n] = softmax(lP'*X{n} + lG + lL{n}'./2 - XML{n}./2-2*log(2*pi)); % R = E[Z]
@@ -73,6 +76,7 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
             B   = B + R;
             lse = lse + sum(lse_n);
             list_R{n} = R;
+            pom = pom + sum((lL{n}'./2 - XML{n}./2-2*log(2*pi))*R');
         end
 
         elbo71 = 0;
@@ -107,7 +111,7 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
             end
         end
 
-        ELBO  = elbo0 + sum(lse) +...
+        ELBO  = elbo0 + sum(lse) + sum(pom) + ...
         sum(sum((alpha0 - Alpha).*lP, 1) - C(Alpha) + C(alpha0), 2) +...
         sum(sum((beta0  - Beta ).*lG, 1) - C(Beta) + C(beta0), 2) +...
         elbo71+elbo74-elbo77-elbo_b;
