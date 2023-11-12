@@ -105,26 +105,26 @@ if true
         xq_whole_list{i} = permute(cat(4,niftiread(pd_list(i)), niftiread(mt_list(i)), niftiread(r1_list(i)), niftiread(r2_list(i))), [4,1,2,3]);
 
         % mask files
-%         mask = 0*mask;
-%         mask(ind) = 1;
-%         save_avw(mask, [gen_list{i} '/' num2str(i) '_ind.nii'] ,'i',scales);
-%         
-%         mask = 0*mask;
-%         mask(ind_wb) = 2;
-%         save_avw(mask, [gen_list{i} '/' num2str(i) '_ind_wb.nii'] ,'i',scales);
-%         
-%         mask = zeros(140,143,103);
-%         mask = 0*mask;
-%         mask(b) = 3;
-%         save_avw(mask, [gen_list{i} '/' num2str(i) '_ind_warped.nii'] ,'i',scales);
-% 
-%         mask = 0*mask;
-%         mask(a) = 4;
-%         save_avw(mask, [gen_list{i} '/' num2str(i) '_ind_wb_warped.nii'] ,'i',scales);       
+        mask = 0*mask;
+        mask(ind) = 1;
+        save_avw(mask, [gen_list{i} '/' num2str(i) '_ind.nii'] ,'i',scales);
+        
+        mask = 0*mask;
+        mask(ind_wb) = 2;
+        save_avw(mask, [gen_list{i} '/' num2str(i) '_ind_wb.nii'] ,'i',scales);
+        
+        mask = zeros(140,143,103);
+        mask = 0*mask;
+        mask(b) = 3;
+        save_avw(mask, [gen_list{i} '/' num2str(i) '_ind_warped.nii'] ,'i',scales);
 
-%         mask = 0*mask;
-%         mask(:) = xq_whole_list{i}(1,:);
-%         save_avw(mask, [gen_list{i} '/' num2str(i) '_pd.nii'] ,'i',scales);
+        mask = 0*mask;
+        mask(a) = 4;
+        save_avw(mask, [gen_list{i} '/' num2str(i) '_ind_wb_warped.nii'] ,'i',scales);       
+
+        mask = 0*mask;
+        mask(:) = xq_whole_list{i}(1,:);
+        save_avw(mask, [gen_list{i} '/' num2str(i) '_pd.nii'] ,'i',scales);
 
     end
 
@@ -138,9 +138,9 @@ if true
         for j=1:4
             xq_list{i}(j,:) = xq_whole_list{i}(j, ind_all);
 
-%             mask = 0*mask;
-%             mask(:) = xq_whole_list{i}(j,:);
-%             save_avw(mask, [gen_list{i} '/' num2str(i) '_map_' num2str(j) '.nii'] ,'i',scales);
+            mask = 0*mask;
+            mask(:) = xq_whole_list{i}(j,:);
+            save_avw(mask, [gen_list{i} '/' num2str(i) '_map_' num2str(j) '.nii'] ,'i',scales);
         end
         %spy(x_list{i});
         %hold on;
@@ -173,7 +173,7 @@ ll_list = [];
 
 for s=1:13
     for i=1:K
-        mask = mask*0;
+        mask = zeros(140,143,103);
         mask(ind_all) = full(list_R{s}(i, :));
         save_avw(mask, [gen_list{s} '/clusters_joint_' num2str(s) '_' num2str(i)] ,'i',scales);
         %niftiinfo([gen_list{s} '/clusters_template_new_' num2str(s) '_' num2str(i)]).raw = niftiinfo(b0_list{i}).raw;        

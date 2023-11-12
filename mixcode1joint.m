@@ -20,13 +20,12 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
     Alpha  = exp(randn(M,K)*0.001);
     Beta   = exp(randn(K,J)*0.001);
 
-    nu0 = (100-3-eps)*rand(1)+3+eps;
+    nu0 = ((100-3-eps)*rand(1)+3+eps)
     L0 = tril(randn(4,4));
-    W0  = L0*L0';
-    c0  = rand(1)+eps;
-    mu0 = randn(4,1)*0.001;
+    W0  = L0*L0'*0.001
+    c0  = (rand(1)+eps)*0.001
+    mu0 = randn(4,1)*0.0001
 
-    %nu = max(exp(randn(1,K,N)),3.001);
     nu = (100-3-eps)*rand(1,K,N)+3+eps;
     for n=1:N
         for k=1:K
@@ -34,14 +33,14 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
             W(:,:,k,n) = L(:,:,k,n)*L(:,:,k,n)';
         end
     end
-    c  = rand(K,1,N)+eps;
+    c  = rand(1,K,N)+eps;
     mu =   randn(4,K,N)*0.001;
 
     elbo0 = 0;
 %     for n=1:N
 %         elbo0 = elbo0 + sum(C1(X{n})); % memory issues
 %     end
-    elbo_b = N*K*Bf(W0,nu0);
+    elbo_b = N*K*logB(W0,nu0);
 
     ELBO   = -Inf;
     for it=1:1000
@@ -53,22 +52,23 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
         A   = 0;
         B   = 0;
         lse = 0;
-        XML = cell(N,1);
-        lL = cell(N,1);
-
-
-        for n=1:N    
+        XML = []; %cell(N,1);
+        lL = []; %cell(N,1);
+        list_R = [];
+        
+        for n=1:N
+            
             for j=1:J
                 for k=1:K
-                    det_W(k) = det(W(:,:,k,n));
-                    XML{n}(k,j) = 4*c(k,:,n) + nu(:,k,n)*(Xq{n}(:,j)-mu(:,k,n))'*W(:,:,k,n)*(Xq{n}(:,j)-mu(:,k,n));
+                    XML{n}(k,j) = 4*c(:,k,n);
+                    XML{n}(k,j) = XML{n}(k,j) + nu(:,k,n)*(Xq{n}(:,j)- mu(:,k,n))'*W(:,:,k,n)*(Xq{n}(:,j)-mu(:,k,n));
+                    lL{n}  = Elogdet(W(:,:,k,n),nu(:,:,n));
                 end
             end
-            sum_psi = psi((nu(:,:,n))/2)+psi((nu(:,:,n) - 1)/2)+psi((nu(:,:,n) - 2)/2)+psi((nu(:,:,n) -3 )/2);
-            lL{n}  = sum_psi + log(16) + log(det_W);
-            
-            [R,lse_n] = softmax(lP'*X{n} + lG + lL{n}'./2 - XML{n}./2); % R = E[Z]
-            %if n==1, subplot(2,2,3); imagesc(R); end
+            disp(sum(lP'*X{n} + lG + lL{n}'./2 - XML{n}./2-2*log(2*pi),2))
+
+
+            [R,lse_n] = softmax(lP'*X{n} + lG + lL{n}'./2 - XML{n}./2-2*log(2*pi)); % R = E[Z]
             A   = A + X{n}*R';
             B   = B + R;
             lse = lse + sum(lse_n);
@@ -78,39 +78,62 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
         elbo71 = 0;
         elbo74 = 0;
         elbo77 = 0;
+
         for n=1:N
-            %disp(n)
-            R_sum{n} = sum(list_R{n},2)+eps;
-            x_mean{n} = sum(Xq{n}*list_R{n}', 1)./R_sum{n}';
+
+            R_sum{n} = sum(list_R{n}',1)+eps;
+            %disp(R_sum{n})
+
+            x_mean{n} = zeros(4,K);
+            S_mean{n} = zeros(4,4,k);
+
             for k=1:K
-                %disp(k)
-                S_mean{n}(k) = sum(list_R{n}(k,:)*(Xq{n}-x_mean{n}(k))'*(Xq{n}-x_mean{n}(k)),2);
-                
+
+                x_mean{n}(:,k) = Xq{n}*list_R{n}(k,:)'/(R_sum{n}(:,k));
+               
+                for j=1:J
+                    S_mean{n}(:,:,k) = S_mean{n}(:,:,k) + list_R{n}(k,j)*(Xq{n}(:,j)-x_mean{n}(:,k))*(Xq{n}(:,j)-x_mean{n}(:,k))'/(R_sum{n}(:,k));
+                end
+
                 %E[ln(p(xq|z,mu,L))]
-                elbo71 = elbo71 + R_sum{n}(k)*(lL{n}(:,k)-4*c(k,:,n)^(-1)-nu(:,k,n)*trace(S_mean{n}(k)*W(:,:,k,n))-nu(:,k,n)*(x_mean{n}(:,k)-mu(:,k,n))'*W(:,:,k,n)*(x_mean{n}(:,k)-mu(:,k,n))-4*log(2*pi))/2;
+                elbo71 = elbo71 + R_sum{n}(:,k)*(lL{n}(:,k)-4*c(:,k,n)^(-1)-nu(:,k,n)*trace(S_mean{n}(:,:,k)*W(:,:,k,n))-nu(:,k,n)*(x_mean{n}(:,k)-mu(:,k,n))'*W(:,:,k,n)*(x_mean{n}(:,k)-mu(:,k,n))-4*log(2*pi))/2;
+
                 %E[ln(p(mu,L))]
-                elbo74 = elbo74 + 4*log(c0/(2*pi)) + lL{n}(:,k) - 4*c0/c(k,:,n) - c0*nu(:,k,n)*(mu(:,k,n)-mu0)'*W(:,:,k,n)*(mu(:,k,n)-mu0) + (nu0-5)*lL{n}(:,k)/2-nu(:,k,n)*trace(W0^(-1)*W(:,:,k,n))/2;
+                elbo74 = elbo74 + (4*log(c0/(2*pi)) + lL{n}(:,k) - 4*c0/c(:,k,n) - c0*nu(:,k,n)*(mu(:,k,n)-mu0)'*W(:,:,k,n)*(mu(:,k,n)-mu0) + (nu0-5)*lL{n}(:,k)-nu(:,k,n)*trace(W0^(-1)*W(:,:,k,n)))/2;
+
                 %E[ln(q(mu,L))]
-                elbo77 = elbo77 + lL{n}(:,k)/2 + 2*log(c(k,:,n)/(2*pi)) - 2 - H(lL{n}(k), W(:,:,k,n), nu(:,k,n));
+                elbo77 = elbo77 + lL{n}(:,k)/2 + 2*log(c(:,k,n)/(2*pi)) - 2 - H_Wishart(W(:,:,k,n), nu(:,k,n));
 
             end
         end
-        
+
         ELBO  = elbo0 + sum(lse) +...
         sum(sum((alpha0 - Alpha).*lP, 1) - C(Alpha) + C(alpha0), 2) +...
         sum(sum((beta0  - Beta ).*lG, 1) - C(Beta) + C(beta0), 2) +...
         elbo71+elbo74-elbo77-elbo_b;
+
+%         disp(elbo0 + sum(lse))
+%         disp(sum(sum((alpha0 - Alpha).*lP, 1) - C(Alpha) + C(alpha0), 2))
+%         disp(elbo71)
+%         disp(elbo74)
+%         disp(elbo77)
+%         disp(elbo_b)
+
 %%
 
         Alpha = A + alpha0;
         Beta  = B +  beta0;
         for n=1:N
-            for k=1:K              
-                W(:,:,k,n) = (W0^(-1) + R_sum{n}(k)*S_mean{n}(k) + c0*R_sum{n}(k)*(x_mean{n}(k)-mu0)*(x_mean{n}(k)-mu0)')^-1;
-            end
+                        
             c(:,:,n) = c0 + R_sum{n};
-            nu(:,:,n) = nu0 + R_sum{n}';
-            mu(:,:,n) = (c0*mu0+x_mean{n}*R_sum{n})./c(:,:,n)';
+            nu(:,:,n) = nu0 + R_sum{n};
+
+            for k=1:K              
+                W(:,:,k,n) = (W0^(-1) + R_sum{n}(:,k)*S_mean{n}(:,:,k) + c0*R_sum{n}(:,k)*(x_mean{n}(:,k)-mu0)*(x_mean{n}(:,k)-mu0)'/(c0+R_sum{n}(:,k)))^(-1);
+                mu(:,k,n) = (c0*mu0+x_mean{n}(:,k)*R_sum{n}(:,k))/c(:,k,n);
+            end
+
+            
         end
 
         epsilon = eps(ELBO*0+numel(lP));
@@ -144,13 +167,38 @@ function lp = C1(alpha)
 end
 
 function lp = Bf(alpha, beta)
-    lp = det(alpha)^(-beta/2)*(2^(2*beta)*pi^(3)+gamma(beta/2)+gamma((beta-1)/2)+gamma((beta-2)/2)+ gamma((beta-3)/2))^(-1);
-
+    lp = det(alpha)^(-beta/2);
+    lp = lp*(2^(2*beta)*pi^(3)*gamma(beta/2)*gamma((beta-1)/2)*gamma((beta-2)/2)*gamma((beta-3)/2))^(-1);
 end
 
 function lp = H(alpha,beta,delta)
-    disp("H")
-    lp = -log(Bf(beta,delta))
-    lp =  lp - (delta-5)/2*alpha+2*delta 
+    lp = -log(Bf(beta,delta));
+    lp =  lp - (delta-5)/2*alpha+2*delta;
 end
 
+
+function h = H_Wishart(W,nu)
+    D = size(W,1);
+    h = -logB(W,nu) - (nu-D-1)*Elogdet(W,nu)/2 + nu*D/2;
+end
+
+function lb = logB(W,nu)
+    D  = size(W,1);
+    s  = 0;
+    for i=1:D
+        s = s + gammaln((nu+1-i)/2);
+    end
+    lb = -nu*logdet(W)/2 - (nu*D*log(2)/2 + D*(D-1)*log(pi)/4 + s);
+end
+
+function ld = Elogdet(W,nu)
+    D  = size(W,1);
+    ld = D*log(2) + logdet(W);
+    for i=1:D
+        ld = ld + psi((nu+1-i)/2);
+    end
+end
+
+function ld = logdet(W)
+    ld = sum(log(diag(chol(W))))*2;
+end
