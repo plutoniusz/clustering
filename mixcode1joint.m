@@ -54,6 +54,7 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
 
         lse = 0;
         pom = 0;
+        elbo1 = 0;
 
         XML = []; %cell(N,1);
         lL = []; %cell(N,1);
@@ -63,20 +64,26 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
             
             for j=1:J
                 for k=1:K
-                    XML{n}(k,j) = 4*c(:,k,n);
+                    XML{n}(k,j) = 4*c(:,k,n)^(-1);
                     XML{n}(k,j) = XML{n}(k,j) + nu(:,k,n)*(Xq{n}(:,j)- mu(:,k,n))'*W(:,:,k,n)*(Xq{n}(:,j)-mu(:,k,n));
-                    lL{n}  = Elogdet(W(:,:,k,n),nu(:,:,n));
+                    lL{n}(k)  = Elogdet(W(:,:,k,n),nu(:,k,n));
                 end
             end
+            %disp(size(lL{n}))
             %disp(sum(lP'*X{n} + lG + lL{n}'./2 - XML{n}./2-2*log(2*pi),2))
 
 
             [R,lse_n] = softmax(lP'*X{n} + lG + lL{n}'./2 - XML{n}./2-2*log(2*pi)); % R = E[Z]
+            %tt = sum(lP'*X{n} + lG + lL{n}'./2 - XML{n}./2-2*log(2*pi),2);
+            %disp(tt)
+            %disp(sum(lP'*X{n} + lG, 2 ))
             A   = A + X{n}*R';
             B   = B + R;
             lse = lse + sum(lse_n);
             list_R{n} = R;
-            pom = pom + sum((lL{n}'./2 - XML{n}./2-2*log(2*pi))*R');
+            elbo1 = elbo1 + sum((lP'*X{n}+lG-log(R+eps)).*R, "all");           
+            pom = pom +sum(R.*(lL{n}'./2 - XML{n}./2-2*log(2*pi)), "all");
+
         end
 
         elbo71 = 0;
@@ -111,10 +118,15 @@ function [ELBO,Alpha,Beta, list_R] = fit_model(X,Xq,K,alpha0,beta0)
             end
         end
 
-        ELBO  = elbo0 + sum(lse) + sum(pom) + ...
+        elbo_test = elbo0 + elbo1 + ...
         sum(sum((alpha0 - Alpha).*lP, 1) - C(Alpha) + C(alpha0), 2) +...
         sum(sum((beta0  - Beta ).*lG, 1) - C(Beta) + C(beta0), 2) +...
         elbo71+elbo74-elbo77-elbo_b;
+
+        ELBO = elbo0 + sum(lse) + ...
+        sum(sum((alpha0 - Alpha).*lP, 1) - C(Alpha) + C(alpha0), 2) +...
+        sum(sum((beta0  - Beta ).*lG, 1) - C(Beta) + C(beta0), 2); % +...
+        elbo71+elbo74-elbo77-elbo_b- pom;
 
 %         disp(elbo0 + sum(lse))
 %         disp(sum(sum((alpha0 - Alpha).*lP, 1) - C(Alpha) + C(alpha0), 2))
